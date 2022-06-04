@@ -37,17 +37,6 @@ void HeartRateTask::Work() {
 
     if (xQueueReceive(messageQueue, &msg, delay)) {
       switch (msg) {
-        case Messages::GoToSleep:
-          StopMeasurement();
-          state = States::Idle;
-          break;
-        case Messages::WakeUp:
-          state = States::Running;
-          if (measurementStarted) {
-            lastBpm = 0;
-            StartMeasurement();
-          }
-          break;
         case Messages::StartMeasurement:
           if (measurementStarted)
             break;
@@ -60,6 +49,8 @@ void HeartRateTask::Work() {
             break;
           StopMeasurement();
           measurementStarted = false;
+          break;
+        default:
           break;
       }
     }
