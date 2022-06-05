@@ -6,6 +6,7 @@
 
 #include "components/heartrate/Ppg.h"
 #include <vector>
+#include <algorithm>
 #include <nrf_log.h>
 using namespace Pinetime::Controllers;
 
@@ -31,14 +32,22 @@ int8_t Ppg::Preprocess(float spl) {
 
 float Ppg::HeartRate() {
   if (!data.IsFull()){
-    return static_cast<float>(data.Get(0));
+    return static_cast<float>(data.Get(data.size() - 1));
   }
 
   NRF_LOG_INFO("PREPROCESS, offset = %d", offset);
 
-  if (data.index() % (data.size() / 20) == 0){
-    last_heartrate = ProcessHeartRate();
+  if (data.index() % (data.size() / previous_heartrates.size()) == 0){
+    previous_heartrates.Append(ProcessHeartRate());
+
+    if (previous_heartrates.IsFull()){
+      auto hr_data = previous_heartrates.GetData();
+      std::sort(hr_data.begin(), hr_data.end());
+      last_heartrate = hr_data[(hr_data.size() + 1) / 2];
+    }
+
   }
+
   return last_heartrate;
 }
 
@@ -73,6 +82,7 @@ void Ppg::SetOffset(uint16_t offset) {
 
 void Ppg::Reset() {
   data.Reset();
+  previous_heartrates.Reset();
 }
 
 int Ppg::Compare(const HeartRateData& data, int shift, size_t count) {

@@ -21,6 +21,8 @@ namespace Pinetime {
 
       private:
         HeartRateData data;
+        CircularBuffer<float, 10> previous_heartrates;
+
         float last_heartrate = 0.0f;
         float offset;
 
