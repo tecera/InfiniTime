@@ -32,22 +32,36 @@ int8_t Ppg::Preprocess(float spl) {
 
 float Ppg::HeartRate() {
   if (!data.IsFull()){
-    return static_cast<float>(data.Get(data.size() - 1));
+    return PPG_UPDATE_RATE;
   }
 
   NRF_LOG_INFO("PREPROCESS, offset = %d", offset);
 
-  if (data.index() % (data.size() / previous_heartrates.size()) == 0){
-    previous_heartrates.Append(ProcessHeartRate());
-
-    if (previous_heartrates.IsFull()){
-      auto hr_data = previous_heartrates.GetData();
-      std::sort(hr_data.begin(), hr_data.end());
-      last_heartrate = hr_data[(hr_data.size() + 1) / 2];
-    }
-
+  const auto new_heartrate = ProcessHeartRate();
+  if (new_heartrate > 40){
+    previous_heartrates.Append(new_heartrate);
+  } else {
+    return last_heartrate;
   }
 
+  if (data.index() % PPG_UPDATE_RATE == 0){
+    if (previous_heartrates.IsFull()){
+      std::copy(
+        previous_heartrates.GetData().begin(),
+        previous_heartrates.GetData().end(),
+        hr_data.begin());
+
+      std::sort(hr_data.begin(), hr_data.end());
+
+      last_heartrate = 0;
+      for (size_t i = PPG_DISCARD_OUTLIERS; i < hr_data.size() - PPG_DISCARD_OUTLIERS; ++i){
+        last_heartrate += hr_data[i];
+      }
+      last_heartrate /= hr_data.size() - 2 * PPG_DISCARD_OUTLIERS;
+    } else {
+      last_heartrate = 0;
+    }
+  }
   return last_heartrate;
 }
 
